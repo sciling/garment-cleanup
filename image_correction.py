@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import time
 import os
+import math
 
 source_dir = "../data/38342NA3PCE/"
 dest_dir = "../results/38342NA3PCE/"
@@ -9,61 +10,80 @@ dest_dir = "../results/38342NA3PCE/"
 file_size = 100000
 final_width = 900
 final_height = 1170
-margin=150
+margin=0
 background_color = (241, 241, 241)
-max_degre = 10
+max_degre = 5
+pixels_for_thread_detection = 400
 img_list = os.listdir(source_dir)
 
-def reorientation(img, max_degre):
-  gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 111, 12)
+subtractor = cv.createBackgroundSubtractorMOG2(history=10, varThreshold=4, detectShadows=True)
 
-  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (11, 11))
-  morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)  
+
+def reorientation(img, pixels_for_thread_detection, max_degree=5,  background_color=[0,0,0]):
+  '''
+  Reorientation of the image by detecting the angle of the thread
+  '''
   
+  # Extract the portion of image for thread detection
+  new_img = img[0:pixels_for_thread_detection, 0:img.shape[1]]
+  gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
+  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 91, 8)
+  
+  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
   threshed = cv.dilate(threshed, kernel)    
   morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
 
+  # Find the contours
   cnts, hierarchy = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
   cnt = sorted(cnts, key=cv.contourArea)[-1]
   
+  # Fit the contour to a line
+  [vx,vy,x,y] = cv.fitLine(cnt, cv.DIST_L2,0,0.01,0.01)
+  
   '''
-  # Rotated Rectangle
-  rect = cv.minAreaRect(cnt)
-  box = cv.boxPoints(rect)
-  box = np.int0(box)
-  cv.drawContours(img,[box],0,(0,0,255),2)
-  (x,y),(width,height),angle = rect
-  #cv.imshow("Gaussian", img)
+  rows,cols = new_img.shape[:2]
+  lefty = int((-x*vy/vx) + y)
+  righty = int(((cols-x)*vy/vx)+y)
+  cv.line(new_img,(cols-1,righty),(0,lefty),(0,255,0),2)
+  
+  
+  height, width = new_img.shape[:2]
+  new_img = cv.resize(new_img, (int(0.5*width), int(0.5*height)), interpolation = cv.INTER_CUBIC)
+  cv.imshow("new_img", new_img)
   '''
   
-  (x, y), (MA, ma), angle = cv.fitEllipse(cnt)
-  ellipse = cv.fitEllipse(cnt)
-  #cv.ellipse(src,ellipse,(0,55,55),2)
-
-  angle = -min(angle%max_degre, max_degre - angle%max_degre) if angle > 0 else min(angle%max_degre, max_degre - angle%max_degre)
-  #print(angle)
-  rows,cols = src.shape[:2]
-
-  #cv.ellipse(img,ellipse,(0,55,55),2)
-  M = cv.getRotationMatrix2D((cols/2,rows/2),angle,1)
-  new_img = cv.warpAffine(img, M, (cols,rows))
+  # Get the angle of the line
+  angle = math.degrees(math.atan2(vy,vx))
   
-  return new_img 
+  if 90 - abs(angle) < max_degree:
+    angle = -(90 - angle) if angle > 0 else 90 + angle
+    rows,cols = src.shape[:2]
+    M = cv.getRotationMatrix2D((cols/2,rows/2),angle,1)
+    img = cv.warpAffine(img, M, (cols,rows), borderValue=background_color)
+  
+  return img[pixels_for_thread_detection:img.shape[0], 0:img.shape[1]] 
 
 def cut(img, margin=0):
   # crop image
   gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
   #th, threshed = cv.threshold(gray, 230, 245, cv.THRESH_BINARY_INV)
   #threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 91, 8)
-  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 111, 12)
+  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 111, 13)
 
-  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (11, 11))
+  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (25, 25))
   threshed = cv.dilate(threshed, kernel)
   morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
 
   cnts,_ = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
   cnt = sorted(cnts, key=cv.contourArea)[-1]
+  
+  # Rotated Rectangle
+#  rect = cv.minAreaRect(cnt)
+#  box = cv.boxPoints(rect)
+#  box = np.int0(box)
+#  cv.drawContours(img,[box],0,(0,0,255),2)
+  
+  
   (img_h, img_w) = img.shape[:2]
   x,y,w,h = cv.boundingRect(cnt)
   
@@ -78,37 +98,24 @@ def cut(img, margin=0):
       
   new_img = img[y:y+h, x:x+w]
 
-  return new_img        
+  return new_img
 
-def transBg(img):   
-  gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-  th, threshed = cv.threshold(gray, 240, 255, cv.THRESH_BINARY_INV)
-
-  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (11,11))
-  morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
-
-  roi, _ = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-
-  mask = np.zeros(img.shape, img.dtype)
-
-  cv.fillPoly(mask, roi, (255,)*img.shape[2], )
-
-  masked_image = cv.bitwise_and(img, mask)
-
-  return masked_image
-
-def colorBg(img, background_color=[0,0,0]):   
+def background_removal(img, background_color=[0,0,0]):   
   gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
   #th, threshed = cv.threshold(gray, 240, 255, cv.THRESH_BINARY_INV)
-  threshed = cv.adaptiveThreshold(gray, 245, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 91, 12)
-
-  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (30, 30))
-  threshed = cv.dilate(threshed, kernel)
-  morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
+  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 13, 8)
+  #th, threshed = cv.threshold(gray, 235, 255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
+  #th2 = subtractor.apply(img)
+  #threshed = th #cv.bitwise_and(th, th2)
+  
+  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
+  dilated = cv.dilate(threshed, kernel)
+  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (25, 25))
+  morphed = cv.morphologyEx(dilated, cv.MORPH_CLOSE, kernel)
 
   cnts,_ = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-  cnt = sorted(cnts, key=cv.contourArea)[-1]
-  
+  #cnt = sorted(cnts, key=cv.contourArea)[-1]
+  #cv.drawContours(img, cnt, -1, (127, 255, 0), 3)
   
   area = 0
   for cnt in cnts:
@@ -122,7 +129,18 @@ def colorBg(img, background_color=[0,0,0]):
   mask = np.zeros(img.shape, img.dtype)
 
   cv.fillPoly(mask, cntsb, (255,)*img.shape[2], )
-
+  
+  height, width = mask.shape[:2]
+  mask1 = cv.resize(threshed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  cv.imshow("gray", mask1)
+  #mask12 = cv.resize(th2, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("video", mask12)
+  #mask1 = cv.resize(threshed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("combination", mask1)
+  
+  mask2 = cv.resize(mask, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  cv.imshow("mask", mask2)
+  
   masked_image = cv.bitwise_and(img, mask)
   masked_image[mask == 0] = [241]
  
@@ -130,14 +148,6 @@ def colorBg(img, background_color=[0,0,0]):
   
   return masked_image
 
-def fourChannels(img):
-  height, width, channels = img.shape
-  if channels < 4:
-    new_img = cv.cvtColor(img, cv.COLOR_BGR2BGRA)
-    return new_img
-
-  return img
-    
 def image_resize(image, width = None, height = None, background_color=[0,0,0], inter = cv.INTER_AREA):
     # initialize the dimensions of the image to be resized and
     # grab the image size
@@ -196,13 +206,6 @@ def image_write(file_name, img, file_size):
             break
         quality = quality - 1
 
-def balance_white(img):
-    wb = cv.xphoto.createGrayworldWB()
-    wb.setSaturationThreshold(0.99)
-    new_img = wb.balanceWhite(img)
-    
-    return new_img
-
 def illumination_correction(img):
     lab= cv.cvtColor(img, cv.COLOR_BGR2LAB)
     l, a, b = cv.split(lab)
@@ -212,32 +215,40 @@ def illumination_correction(img):
     new_img = cv.cvtColor(limg, cv.COLOR_LAB2BGR)
     
     return new_img
-    
+
+'''
+# For background removal
+for img in img_list:
+    src = cv.imread(os.path.join(source_dir, img))
+    dst = illumination_correction(src)
+    mask = subtractor.apply(dst)
+'''    
+
 for img in img_list:    
     src = cv.imread(os.path.join(source_dir, img), 1)
     
     print("\nCorrecting the image:", img)
-
-    print("Automatic re-orientation of the garment, in case it is rotated in the original image")
-    dst = reorientation(src, max_degre)
     
     print("Illumination correction.")
-    dst = illumination_correction(dst)
+    dst = illumination_correction(src)
+        
+    print("Re-orientation of the garment, in case it is rotated in the original image")
+    dst = reorientation(dst, pixels_for_thread_detection, max_degre, background_color)
+    
+    print("Detection and removal of background.")
+    dst = background_removal(dst, background_color)
     
     print("Centering and zooming of the garment.")
     dst = cut(dst, margin)
     
-    print("Automatic detection and removal of background.")
-    dst = colorBg(dst, background_color)
-    
     print("Resizing the final image.")
     dst = image_resize(dst, final_width, final_height, background_color)
+    
+    #dst = cv.GaussianBlur(dst,(5,5),0)
     
     print("The resulting image will have a maximum size of %s bytes"% file_size)
     image_write(os.path.join(dest_dir, str(img + ".jpg")), dst, file_size)
     
-    #src = illumination_correction(src)
-    #src = reorientation(src)
     
     height, width = src.shape[:2]
     src = cv.resize(src, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
