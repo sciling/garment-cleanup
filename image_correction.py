@@ -24,6 +24,9 @@ def reorientation(img, pixels_for_thread_detection, max_degree=5,  background_co
   Reorientation of the image by detecting the angle of the thread
   '''
   
+  # Correct the illumination to increase contrast
+  new_img = illumination_correction(img)
+  
   # Extract the portion of image for thread detection
   new_img = img[0:pixels_for_thread_detection, 0:img.shape[1]]
   gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
@@ -64,11 +67,13 @@ def reorientation(img, pixels_for_thread_detection, max_degree=5,  background_co
   return img[pixels_for_thread_detection:img.shape[0], 0:img.shape[1]] 
 
 def cut(img, margin=0):
+  # Correct the illumination to increase contrast
+  new_img = illumination_correction(img)
   # crop image
-  gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+  gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
   #th, threshed = cv.threshold(gray, 230, 245, cv.THRESH_BINARY_INV)
   #threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 91, 8)
-  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 111, 13)
+  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 19, 10)
 
   kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (25, 25))
   threshed = cv.dilate(threshed, kernel)
@@ -100,20 +105,30 @@ def cut(img, margin=0):
 
   return new_img
 
-def background_removal(img, background_color=[0,0,0]):   
-  gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-  #th, threshed = cv.threshold(gray, 240, 255, cv.THRESH_BINARY_INV)
-  threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 13, 8)
-  #th, threshed = cv.threshold(gray, 235, 255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
-  #th2 = subtractor.apply(img)
-  #threshed = th #cv.bitwise_and(th, th2)
+def background_removal(img, background_color=[0,0,0]):
   
+  # Correct the illumination to increase contrast
+  new_img = illumination_correction(img)
+  
+  gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
+  th = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 37, 11)
+  
+  # Remove noise
+  th = cv.fastNlMeansDenoising(th, None, 200, 53, 3)
+  
+  blur = cv.GaussianBlur(th,(25,25), 0)
+  threshed = cv.addWeighted(blur, 60, th, 10, 0)
+    
+  # Open
   kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
-  dilated = cv.dilate(threshed, kernel)
-  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (25, 25))
-  morphed = cv.morphologyEx(dilated, cv.MORPH_CLOSE, kernel)
-
-  cnts,_ = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+  opened = cv.morphologyEx(threshed, cv.MORPH_OPEN, kernel)
+  
+  # Close
+  kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (10, 10))
+  closed = cv.morphologyEx(opened, cv.MORPH_CLOSE, kernel)
+    
+  cnts,_ = cv.findContours(closed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+ 
   #cnt = sorted(cnts, key=cv.contourArea)[-1]
   #cv.drawContours(img, cnt, -1, (127, 255, 0), 3)
   
@@ -130,21 +145,34 @@ def background_removal(img, background_color=[0,0,0]):
 
   cv.fillPoly(mask, cntsb, (255,)*img.shape[2], )
   
-  height, width = mask.shape[:2]
-  mask1 = cv.resize(threshed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
-  cv.imshow("gray", mask1)
+  #height, width = mask.shape[:2]
+  #mask1 = cv.resize(threshed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("threshed", mask1)
+  #mask1 = cv.resize(th, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("th", mask1)
+  #mask1 = cv.resize(blur, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("blur", mask1)
+  #mask1 = cv.resize(opened, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("opened", mask1)
+  #mask1 = cv.resize(closed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("closed", mask1)
+  
   #mask12 = cv.resize(th2, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
   #cv.imshow("video", mask12)
   #mask1 = cv.resize(threshed, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
   #cv.imshow("combination", mask1)
   
-  mask2 = cv.resize(mask, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
-  cv.imshow("mask", mask2)
+  #mask2 = cv.resize(mask, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
+  #cv.imshow("mask", mask2)
   
+  
+  #print("White balance.")
+  #img = balance_white(img)
+    
   masked_image = cv.bitwise_and(img, mask)
   masked_image[mask == 0] = [241]
  
-  masked_image = cv.GaussianBlur(masked_image,(5,5),0)
+  #masked_image = cv.GaussianBlur(masked_image,(5,5),0)
   
   return masked_image
 
@@ -216,6 +244,18 @@ def illumination_correction(img):
     
     return new_img
 
+def balance_white(img):
+    
+    wb = cv.xphoto.createSimpleWB()
+    wb.setInputMin(0)
+    wb.setInputMax(255)
+    wb.setOutputMin(0)
+    wb.setOutputMax(255)
+    #wb.setSaturationThreshold(0.99)
+    new_img = wb.balanceWhite(img)
+    
+    return new_img
+
 '''
 # For background removal
 for img in img_list:
@@ -224,31 +264,34 @@ for img in img_list:
     mask = subtractor.apply(dst)
 '''    
 
-for img in img_list:    
+for img in img_list:
+    #img="IMG_0899.JPG"
+    #img="IMG_0902.JPG"
     src = cv.imread(os.path.join(source_dir, img), 1)
     
     print("\nCorrecting the image:", img)
     
-    print("Illumination correction.")
-    dst = illumination_correction(src)
+    #print("Illumination correction.")
+    #dst = illumination_correction(src)
         
     print("Re-orientation of the garment, in case it is rotated in the original image")
-    dst = reorientation(dst, pixels_for_thread_detection, max_degre, background_color)
+    dst = reorientation(src, pixels_for_thread_detection, max_degre, background_color)
     
     print("Detection and removal of background.")
     dst = background_removal(dst, background_color)
     
     print("Centering and zooming of the garment.")
-    dst = cut(dst, margin)
+    dst = cut(dst, margin)    
     
     print("Resizing the final image.")
     dst = image_resize(dst, final_width, final_height, background_color)
     
-    #dst = cv.GaussianBlur(dst,(5,5),0)
+    #print("White balance.")
+    #dst = balance_white(dst)
+    
     
     print("The resulting image will have a maximum size of %s bytes"% file_size)
     image_write(os.path.join(dest_dir, str(img + ".jpg")), dst, file_size)
-    
     
     height, width = src.shape[:2]
     src = cv.resize(src, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
@@ -257,7 +300,6 @@ for img in img_list:
     dst = cv.resize(dst, (int(0.75*width), int(0.75*height)), interpolation = cv.INTER_CUBIC)
     
     cv.imshow("src", src)
-    #cv.imshow("src2", cv.cvtColor(src, cv.COLOR_BGR2GRAY))
     cv.imshow("dst", dst)
  
     #input("Press Enter to continue...")
