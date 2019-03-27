@@ -177,32 +177,9 @@ def background_removal(img, background_color=[0,0,0], B_values=(3,91), C_values=
     gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
     
     # Apply noise filter to the gray image
-    gray = cv.fastNlMeansDenoising(gray, None, 6, 7, 21)
+    gray = cv.fastNlMeansDenoising(gray, None, 4, 7, 21)
     gray = cv.GaussianBlur(gray, (3, 3), 0)
     gray = cv.bilateralFilter(gray, 4, 7, 21)
-
-    # Adjust the adaptiveThreshold to the mean value of the gray image
-    #mean = np.uint8(cv.mean(gray))[0]
-    
-    #if mean <= 210:
-        #B_values = (3,91)
-        #C_values = (6,11)
-    #elif 210 < mean <= 220:
-        #B_values = (11,51)
-        #C_values = (9,11)
-    #elif 221 <= mean < 230:
-        #B_values = (3,91)
-        #C_values = (6,11)
-    #elif 230 <= mean < 240:
-        #B_values = (79,150)
-        #C_values = (5,11)
-    #else:
-        #B_values = (91,150)
-        #C_values = (4,8)
-    
-    #print(mean)
-    #print(B_values)
-    #print(C_values)
 
     th =  np.zeros(gray.shape, gray.dtype)
     for B in range(B_values[0], B_values[1]): 
@@ -227,11 +204,6 @@ def background_removal(img, background_color=[0,0,0], B_values=(3,91), C_values=
     th = cv.addWeighted(blur, 50, th, 10, 0)
     th = cv.fastNlMeansDenoising(th, None, 4, 7, 21)
     
-    # Apply a opening morphological transformation, i.e. erosion followed by dilation.
-    # It is useful in removing noise
-    #kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
-    #opened = cv.morphologyEx(th, cv.MORPH_OPEN, kernel)
-    
     # Apply a closing morphological transformation, i.e. dilation followed by erosion.
     # It is useful in closing small holes inside the foreground objects, or small black points on the object.
     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (35, 35))
@@ -253,13 +225,6 @@ def background_removal(img, background_color=[0,0,0], B_values=(3,91), C_values=
     # Create a closed mask with the selected contours
     mask = np.zeros(img.shape, img.dtype)
     cv.fillPoly(mask, cntsb, (255,)*img.shape[2], )
-
-    height, width = mask.shape[:2]
-    mask1 = cv.resize(mask, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
-    cv.imshow("mask", mask1)
-    
-    mask1 = cv.resize(th, (int(0.25*width), int(0.25*height)), interpolation = cv.INTER_CUBIC)
-    cv.imshow("th", mask1)
     
     #print("White balance.")
     #img = Graywold_white_balance(img)
@@ -384,7 +349,6 @@ def Graywold_white_balance(img, saturation=0.99):
     return new_img
 
 for img in img_lst:
-    img='IMG_0849.JPG'
     print("\nProcessing the image:", img)
     
     source = cv.imread(os.path.join(input_dir, img), 1)
