@@ -27,36 +27,6 @@ import argparse
 from pathlib import Path
 import ast
 
-parser = argparse.ArgumentParser(description='Process images.')
-parser.add_argument('-i', '--input', required=True)
-parser.add_argument('-o', '--output', required=True)
-parser.add_argument('-fs', '--file_size', default=100000)
-parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
-parser.add_argument('-m', '--margin', default=0)
-parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
-parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
-parser.add_argument('-md', '--max_degree_correction', default=5)
-parser.add_argument('-show', '--show_images', default=False)
-
-args = parser.parse_args()
-
-input = args.input
-output = args.output
-
-file_size = int(args.file_size)
-file_resolution = ast.literal_eval(args.file_resolution)
-margin = int(args.margin)
-background_color = ast.literal_eval(args.background_color)
-max_degree = int(args.max_degree_correction)
-size_for_thread_detection = ast.literal_eval(args.size_for_thread_detection)
-show = args.show_images
-
-if Path(input).exists():
-    img_lst = [os.path.basename(input)] if Path(input).is_file() else sorted(os.listdir(input))
-    input_dir = os.path.dirname(input)
-else:
-    print("The input does not exist:", input)
-    sys.exit(0)
 
 def garment_reorientation(img, size_for_thread_detection, max_degree=5, background_color=[0, 0, 0]):
     '''
@@ -348,39 +318,75 @@ def Graywold_white_balance(img, saturation=0.99):
     
     return new_img
 
-for img in img_lst:
-    print("\nProcessing the image:", img)
-    
-    source = cv.imread(os.path.join(input_dir, img), 1)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process images.')
+    parser.add_argument('-i', '--input', required=True)
+    parser.add_argument('-o', '--output', required=True)
+    parser.add_argument('-fs', '--file_size', default=100000)
+    parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
+    parser.add_argument('-m', '--margin', default=0)
+    parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
+    parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
+    parser.add_argument('-md', '--max_degree_correction', default=5)
+    parser.add_argument('-show', '--show_images', default=False)
+    parser.add_argument('-b', '--filter_block_sizes', default='(3, 91)')
+    parser.add_argument('-c', '--filter_constant', default='(6, 11)')
 
-    print("* Re-orientation of the garment.")
-    reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
-    
-    print("* Detection and removal of background.")
-    cleaned = background_removal(reoriented, background_color)
-    
-    print("* Centering and zooming of the garment.")
-    cropped = crop_garment(cleaned, margin)
+    args = parser.parse_args()
 
-    print("* Resizing the final image.")
-    resized = image_resize(cropped, file_resolution, background_color)
+    input = args.input
+    output = args.output
 
-    print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
-    image_write(os.path.join(output, str(os.path.splitext(img)[0] + ".jpg")), resized, file_size)
+    file_size = int(args.file_size)
+    file_resolution = ast.literal_eval(args.file_resolution)
+    margin = int(args.margin)
+    background_color = ast.literal_eval(args.background_color)
+    max_degree = int(args.max_degree_correction)
+    size_for_thread_detection = ast.literal_eval(args.size_for_thread_detection)
+    show = args.show_images
+    B_values = ast.literal_eval(args.filter_block_sizes)
+    C_values = ast.literal_eval(args.filter_constant)
+
+    if Path(input).exists():
+        img_lst = [os.path.basename(input)] if Path(input).is_file() else sorted(os.listdir(input))
+        input_dir = os.path.dirname(input)
+    else:
+        print("The input does not exist:", input)
+        sys.exit(0)
+
+    for img in img_lst:
+        print("\nProcessing the image:", img)
+        
+        source = cv.imread(os.path.join(input_dir, img), 1)
+
+        print("* Re-orientation of the garment.")
+        reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
+        
+        print("* Detection and removal of background.")
+        cleaned = background_removal(reoriented, background_color, B_values, C_values)
+        
+        print("* Centering and zooming of the garment.")
+        cropped = crop_garment(cleaned, margin)
+
+        print("* Resizing the final image.")
+        resized = image_resize(cropped, file_resolution, background_color)
+
+        print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
+        image_write(os.path.join(output, str(os.path.splitext(img)[0] + ".jpg")), resized, file_size)
+
+        if show:
+            height, width = source.shape[:2]
+            source = cv.resize(source, (int(0.25 * width), int(0.25 * height)), interpolation=cv.INTER_CUBIC)
+
+            height, width = resized.shape[:2]
+            resized = cv.resize(resized, (int(0.75 * width), int(0.75 * height)), interpolation=cv.INTER_CUBIC)
+
+            cv.imshow("Input", source)
+            cv.imshow("Output", resized)
+            
+            key = cv.waitKey(30)
+            if key == 27:
+                break
 
     if show:
-        height, width = source.shape[:2]
-        source = cv.resize(source, (int(0.25 * width), int(0.25 * height)), interpolation=cv.INTER_CUBIC)
-
-        height, width = resized.shape[:2]
-        resized = cv.resize(resized, (int(0.75 * width), int(0.75 * height)), interpolation=cv.INTER_CUBIC)
-
-        cv.imshow("Input", source)
-        cv.imshow("Output", resized)
-        
-        key = cv.waitKey(30)
-        if key == 27:
-            break
-
-if show:
-    cv.destroyAllWindows()
+        cv.destroyAllWindows()
