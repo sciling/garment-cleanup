@@ -339,7 +339,7 @@ if __name__ == '__main__':
         reoriented = garment_reorientation(source, cleaned, size_for_thread_detection, max_degree, background_color)
         
         print("* Centering and zooming of the garment.")
-        cropped = crop_garment(reoriented) #, margin)
+        cropped = crop_garment(reoriented)
 
         print("* Resizing the final image.")
         resized = image_resize(cropped, margin, file_resolution, background_color)
