@@ -95,16 +95,13 @@ def garment_reorientation(img, clean_img, size_for_thread_detection, max_degree=
     else:
         return clean_img
 
-def crop_garment(img, margin=0):
+def crop_garment(img): #, margin=0):
     """
     Detects the garment in the image and crop it.
     """
-    
-    # Correct the illumination to increase the contrast
-    new_img = illumination_correction(img)
-    
+
     # Get the gray thresholds
-    gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 19, 8)
 
     # Find the garment contour and get the bounding rectangle
@@ -113,20 +110,22 @@ def crop_garment(img, margin=0):
     if len(cnts) > 0:
         x, y, w, h = cv.boundingRect(np.concatenate(cnts))
         
-        # Add the margin pixels
-        (img_h, img_w) = img.shape[:2]
-
-        if x - margin >= 0:
-            x = x - margin
-        if y - margin >= 0:
-            y = y - margin
-        if x + w + margin <= img_w:
-            w = w + margin
-        if y + h + margin <= img_h:
-            h = h + margin
-
-        # Crop the garment
+         # Crop the garment
         cropped = img[y:y + h, x:x + w]
+        
+        ## Add the margin pixels
+        #(img_h, img_w) = img.shape[:2]
+
+        #if x - margin >= 0:
+            #x = x - margin
+        #if y - margin >= 0:
+            #y = y - margin
+        #if x + w + margin <= img_w:
+            #w = w + margin
+        #if y + h + margin <= img_h:
+            #h = h + margin
+
+       
 
         return cropped
     else:
@@ -178,6 +177,10 @@ def background_removal(img, background_color=[0,0,0], B_values=(77,91), C_values
     blur = cv.GaussianBlur(mask2,(5,5),0)
     mask2 = cv.addWeighted(blur,1.5,mask2,-0.5,0)
     
+    
+    # Apply a ilumination correction
+    img = illumination_correction(img)
+    
     # Apply the mask to extract the garment
     fg_masked = cv.bitwise_and(img, mask2)
     
@@ -191,7 +194,7 @@ def background_removal(img, background_color=[0,0,0], B_values=(77,91), C_values
     
     return masked
 
-def image_resize(img, file_resolution=None, background_color=[0, 0, 0], inter=cv.INTER_AREA):
+def image_resize(img, margin = None, file_resolution=None, background_color=[0, 0, 0], inter=cv.INTER_AREA):
     """
     Resize the image to a desired resolution.
     """
@@ -199,10 +202,12 @@ def image_resize(img, file_resolution=None, background_color=[0, 0, 0], inter=cv
     # Get the width and the height of the final image
     (width, height) = file_resolution if file_resolution is not None else (None, None)
     
+    (top, bottom, left, right) = margin if margin is not None else (0, 0, 0, 0)
+    
     # Initialize the dimensions of the image to be resized and grab the image size
     dim = None
     (h, w) = img.shape[:2]
-
+    
     # If both the width and height are None, then return the original image
     if width is None and height is None:
         return img
@@ -234,8 +239,11 @@ def image_resize(img, file_resolution=None, background_color=[0, 0, 0], inter=cv
         else:
             dim = (nw, height)
 
+    # Add border
+    border=cv.copyMakeBorder(img, top=top, bottom=bottom, left=left, right=right, borderType=cv.BORDER_CONSTANT, value=background_color)
+    
     # Resize the image
-    resized = cv.resize(img, dim, interpolation=inter)
+    resized = cv.resize(border, dim, interpolation=inter)
 
     # Wrap the border
     t = int((height - dim[1]) / 2)
@@ -303,7 +311,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', required=True)
     parser.add_argument('-fs', '--file_size', default=100000)
     parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
-    parser.add_argument('-m', '--margin', default=0)
+    parser.add_argument('-m', '--margin', default='(114,114,114,114)')
     parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
     parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
     parser.add_argument('-md', '--max_degree_correction', default=5)
@@ -318,7 +326,7 @@ if __name__ == '__main__':
 
     file_size = int(args.file_size)
     file_resolution = ast.literal_eval(args.file_resolution)
-    margin = int(args.margin)
+    margin = ast.literal_eval(args.margin)
     background_color = ast.literal_eval(args.background_color)
     max_degree = int(args.max_degree_correction)
     size_for_thread_detection = ast.literal_eval(args.size_for_thread_detection)
@@ -345,10 +353,10 @@ if __name__ == '__main__':
         reoriented = garment_reorientation(source, cleaned, size_for_thread_detection, max_degree, background_color)
         
         print("* Centering and zooming of the garment.")
-        cropped = crop_garment(reoriented, margin)
+        cropped = crop_garment(reoriented) #, margin)
 
         print("* Resizing the final image.")
-        resized = image_resize(cropped, file_resolution, background_color)
+        resized = image_resize(cropped, margin, file_resolution, background_color)
 
         print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
         image_write(os.path.join(output, str(os.path.splitext(img)[0] + ".jpg")), resized, file_size)
