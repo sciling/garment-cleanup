@@ -95,7 +95,7 @@ def garment_reorientation(img, clean_img, size_for_thread_detection, max_degree=
     else:
         return clean_img
 
-def crop_garment(img): #, margin=0):
+def crop_garment(img):
     """
     Detects the garment in the image and crop it.
     """
@@ -112,20 +112,6 @@ def crop_garment(img): #, margin=0):
         
          # Crop the garment
         cropped = img[y:y + h, x:x + w]
-        
-        ## Add the margin pixels
-        #(img_h, img_w) = img.shape[:2]
-
-        #if x - margin >= 0:
-            #x = x - margin
-        #if y - margin >= 0:
-            #y = y - margin
-        #if x + w + margin <= img_w:
-            #w = w + margin
-        #if y + h + margin <= img_h:
-            #h = h + margin
-
-       
 
         return cropped
     else:
