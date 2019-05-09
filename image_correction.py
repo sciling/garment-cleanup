@@ -26,32 +26,36 @@ import sys
 import argparse
 from pathlib import Path
 import ast
-import scipy
 
-def garment_reorientation(img, clean_img, size_for_thread_detection, max_degree=5, background_color=[0, 0, 0]):
+
+def garment_reorientation(img, size_for_thread_detection, max_degree=5, background_color=[0, 0, 0]):
     '''
     Reorientation of the garment by detecting the angle of the thread from which it hangs.
     '''
-    
+
+    # Correct the illumination to increase the contrast
+    new_img = illumination_correction(img)
+
     # Get the size of the image portion for the thread detection
     (w, h) = size_for_thread_detection
-    
+
     # Extract the portion of image for thread detection
-    portion = img[0:h, int(img.shape[1]/2 - w/2):int(img.shape[1]/2 + w/2)]
-    
-    # Get the gray levels
+    portion = new_img[0:h, int(img.shape[1]/2 - w/2):int(img.shape[1]/2 + w/2)]
+
+    # Get the gray thresholds
     gray = cv.cvtColor(portion, cv.COLOR_BGR2GRAY)
-    
-    sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=5)
-    sobely = cv.Sobel(gray,cv.CV_64F,0,1,ksize=5)
-    abs_sobel = np.absolute(np.power((np.power(sobelx, 2) + np.power(sobely, 2)), 1/2))
-    sobel = np.uint8(abs_sobel)
-    
-    _, threshed = cv.threshold(sobel,127,255,cv.THRESH_BINARY_INV)
+
+    # Remove noise in the gray image
+    gray = cv.fastNlMeansDenoising(gray, None, 10, 11, 21)
+    threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 233, 3)
+
+    # Apply a closing morphological transformation, i.e. dilation followed by erosion.
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
+    morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
 
     # Find the thread contour
-    cnts, hierarchy = cv.findContours(threshed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    
+    cnts, hierarchy = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
     # If the we found a contour in the search area
     if len(cnts) > 0:
         cnt = sorted(cnts, key=cv.contourArea)[-1]
@@ -61,22 +65,20 @@ def garment_reorientation(img, clean_img, size_for_thread_detection, max_degree=
 
         # Get the angle of the line
         angle = math.degrees(math.atan2(vy, vx))
-    
+
     # Otherwise, we search the rotated rectangle in the whole image
     else:
-        # Get the gray levels
-        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        
-        sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=5)
-        sobely = cv.Sobel(gray,cv.CV_64F,0,1,ksize=5)
-        abs_sobel = np.absolute(np.power((np.power(sobelx, 2) + np.power(sobely, 2)), 1/2))
-        sobel = np.uint8(abs_sobel)
-        
-        _, threshed = cv.threshold(sobel,127,255,cv.THRESH_BINARY_INV)
+        # Get the gray thresholds
+        gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
+        threshed = cv.adaptiveThreshold(gray, 245, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 233, 3)
 
-        # Find the garment contour
-        cnts, hierarchy = cv.findContours(threshed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        
+        # Apply a closing morphological transformation, i.e. dilation followed by erosion.
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
+        morphed = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
+
+        # Find the thread contour
+        cnts, hierarchy = cv.findContours(morphed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
         if len(cnts) > 0:
             cnt = sorted(cnts, key=cv.contourArea)[-1]
             # Get the rotated Rectangle
@@ -84,16 +86,16 @@ def garment_reorientation(img, clean_img, size_for_thread_detection, max_degree=
             center, size, angle = rect
         # Else return the input image
         else:
-            return clean_img
-    
+            return img
+
     # Rotate the image if the detected angle is less than the maximum
     if 90 - abs(angle) < max_degree:
         angle = -(90 - angle) if angle > 0 else 90 + angle
         rows, cols = img.shape[:2]
         M = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
-        return cv.warpAffine(clean_img, M, (cols, rows), borderValue=background_color)
-    else:
-        return clean_img
+        img = cv.warpAffine(img, M, (cols, rows), borderValue=background_color)
+
+    return img
 
 def crop_garment(img):
     """
@@ -106,38 +108,63 @@ def crop_garment(img):
 
     # Find the garment contour and get the bounding rectangle
     cnts, _ = cv.findContours(threshed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    
+
     if len(cnts) > 0:
         x, y, w, h = cv.boundingRect(np.concatenate(cnts))
-        
-         # Crop the garment
+
+        # Crop the garment
         cropped = img[y:y + h, x:x + w]
 
         return cropped
     else:
         return img
 
-def background_removal(img, background_color=[0,0,0], B_values=(77,91), C_values=(6,11)):
+def background_removal(img, background_color=[0,0,0], B_values=(3,91), C_values=(6,11)):
     """
     Detects the garment in the image and sets the color of the background.
     """
 
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    
-    sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=5)
-    sobely = cv.Sobel(gray,cv.CV_64F,0,1,ksize=5)
-    abs_sobel = np.absolute(np.power((np.power(sobelx, 2) + np.power(sobely, 2)), 1/2))
-    sobel = np.uint8(abs_sobel)
-    
+    new_img = cv.fastNlMeansDenoisingColored(img,None,4,4,7,21)
+    # Correct the illumination to increase contrast
+    new_img = illumination_correction(new_img)
+
+    gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
+
+    # Apply noise filter to the gray image
+    gray = cv.fastNlMeansDenoising(gray, None, 4, 7, 21)
+    gray = cv.GaussianBlur(gray, (3, 3), 0)
+    gray = cv.bilateralFilter(gray, 4, 7, 21)
+
+    th =  np.zeros(gray.shape, gray.dtype)
+    for B in range(B_values[0], B_values[1]):
+        if B % 2 != 0:
+            for C in range(C_values[0], C_values[1]):
+                thb = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, B, C)
+                th = cv.addWeighted(th, 1, thb, 1/(len(B_values)*len(C_values)), 0)
+
+    # To remove shadows
+    _,th = cv.threshold(th,60,255,cv.THRESH_BINARY)
+
+    # floodFill from the four corners for differenciate in very clear garment
+    h, w = th.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    cv.floodFill(th, mask, (0, 0), 0)
+    cv.floodFill(th, mask, (0, h-1), 0)
+    cv.floodFill(th, mask, (w-1, 0), 0)
+    cv.floodFill(th, mask, (w-1, h-1), 0)
+
+    # Apply noise filter to the threshold image
+    blur = cv.GaussianBlur(th,(5, 5), 0)
+    th = cv.addWeighted(blur, 50, th, 10, 0)
+    th = cv.fastNlMeansDenoising(th, None, 4, 7, 21)
+
     # Apply a closing morphological transformation, i.e. dilation followed by erosion.
     # It is useful in closing small holes inside the foreground objects, or small black points on the object.
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-    closed = cv.morphologyEx(sobel, cv.MORPH_CLOSE, kernel)
-    
-    ret,thresh2 = cv.threshold(closed,127,255,cv.THRESH_BINARY)
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (35, 35))
+    closed = cv.morphologyEx(th, cv.MORPH_CLOSE, kernel)
 
     ## Find the garment contours
-    cnts,_ = cv.findContours(thresh2, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    cnts,_ = cv.findContours(closed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
     # From the found contours select those with more than the 50% of total area
     area = 0
@@ -146,54 +173,48 @@ def background_removal(img, background_color=[0,0,0], B_values=(77,91), C_values
 
     cntsb = []
     for cnt in sorted(cnts, key=cv.contourArea, reverse=True):
-        
-        if cv.contourArea(cnt)/area > 0.2:
-            cntsb.append(cnt) 
+        if cv.contourArea(cnt)/area > 0.5:
+            cntsb.append(cnt)
 
     # Create a closed mask with the selected contours
     mask = np.zeros(img.shape, img.dtype)
     cv.fillPoly(mask, cntsb, (255,)*img.shape[2], )
-    
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-    mask2 = cv.erode(mask,kernel,iterations = 2)
-    
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (35, 35))
-    mask2 = cv.morphologyEx(mask2, cv.MORPH_CLOSE, kernel)
-    
-    blur = cv.GaussianBlur(mask2,(5,5),0)
-    mask2 = cv.addWeighted(blur,1.5,mask2,-0.5,0)
-    
-    
+
     # Apply a ilumination correction
     img = illumination_correction(img)
-    
+
     # Apply the mask to extract the garment
-    fg_masked = cv.bitwise_and(img, mask2)
-    
+    fg_masked = cv.bitwise_and(img, mask)
+
     # Apply the mask to colour the background
     bg = np.full(img.shape, background_color, dtype=np.uint8)
-    mask = cv.bitwise_not(mask2)
+    mask = cv.bitwise_not(mask)
     bg_masked = cv.bitwise_and(bg, mask)
 
     # Combine the extracted garment with the colored background
     masked = cv.bitwise_or(fg_masked, bg_masked)
-    
+
     return masked
 
 def image_resize(img, margin = None, file_resolution=None, background_color=[0, 0, 0], inter=cv.INTER_AREA):
     """
     Resize the image to a desired resolution.
     """
-    
+
+    # Get the four margins
+    (top, bottom, left, right) = margin if margin is not None else (0, 0, 0, 0)
+
     # Get the width and the height of the final image
     (width, height) = file_resolution if file_resolution is not None else (None, None)
-    
-    (top, bottom, left, right) = margin if margin is not None else (0, 0, 0, 0)
-    
+
+    # Set the width and the height without margins
+    width = width - left - right
+    height = height - top - bottom
+
     # Initialize the dimensions of the image to be resized and grab the image size
     dim = None
     (h, w) = img.shape[:2]
-    
+
     # If both the width and height are None, then return the original image
     if width is None and height is None:
         return img
@@ -209,13 +230,13 @@ def image_resize(img, margin = None, file_resolution=None, background_color=[0, 
         # Calculate the ratio of the width and construct the dimensions
         r = width / float(w)
         dim = (width, int(h * r))
-        
+
     # Otherwise, both (width and heigth) are not None
     else:
         # Calculate the ratio of the original image
         r = float(h) / float(w)
-        
-        # With the original ratio, get the resized width and height 
+
+        # With the original ratio, get the resized width and height
         nw = int(height / r)
         nh = int(width * r)
 
@@ -225,11 +246,8 @@ def image_resize(img, margin = None, file_resolution=None, background_color=[0, 
         else:
             dim = (nw, height)
 
-    # Add border
-    border=cv.copyMakeBorder(img, top=top, bottom=bottom, left=left, right=right, borderType=cv.BORDER_CONSTANT, value=background_color)
-    
     # Resize the image
-    resized = cv.resize(border, dim, interpolation=inter)
+    resized = cv.resize(img, dim, interpolation=inter)
 
     # Wrap the border
     t = int((height - dim[1]) / 2)
@@ -240,19 +258,22 @@ def image_resize(img, margin = None, file_resolution=None, background_color=[0, 
     # Wrap the resized image to the defined canvas size and fill with the background color
     wrapped = cv.copyMakeBorder(resized, t, b, l, r, cv.BORDER_CONSTANT, value=background_color)
 
+    # Add border
+    img_border=cv.copyMakeBorder(wrapped, top=top, bottom=bottom, left=left, right=right, borderType=cv.BORDER_CONSTANT, value=background_color)
+
     # Return the wrapped image
-    return wrapped
+    return img_border
 
 def image_write(file_name, img, file_size):
     """
     Writes the image to a JPG file with a size smaller than the determined by 'file_size'.
     Size adjustment is achieved by adjusting the quality of the JPG compression.
     """
-    
+
     directory = os.path.dirname(file_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    
+
     quality = 100
     while True:
         cv.imwrite(file_name, img, [cv.IMWRITE_JPEG_QUALITY, quality])
@@ -265,15 +286,15 @@ def illumination_correction(img):
     """
     Perform an illumniation correction based on CLAHE (Contrast Limited Adaptive Histogram Equalization).
     """
-    
+
     # Convert the RGB image to Lab color-space
     lab = cv.cvtColor(img, cv.COLOR_BGR2LAB)
     l, a, b = cv.split(lab)
-    
+
     # Apply adaptive histogram equalization to the L channel
     clahe = cv.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     cl = clahe.apply(l)
-    
+
     # Convert the resulting Lab back to RGB
     limg = cv.merge((cl, a, b))
     new_img = cv.cvtColor(limg, cv.COLOR_LAB2BGR)
@@ -284,11 +305,11 @@ def Graywold_white_balance(img, saturation=0.99):
     """
     Perform a white balance based on the the gray world algorithm which is based on an assumption that the average reflectance in the scene with rich color changes is achromatic.
     """
-    
+
     wb = cv.xphoto.createGrayworldWB()
     wb.setSaturationThreshold(saturation)
     new_img = wb.balanceWhite(img)
-    
+
     return new_img
 
 if __name__ == '__main__':
@@ -327,19 +348,19 @@ if __name__ == '__main__':
         print("The input does not exist:", input)
         sys.exit(0)
 
-    for img in img_lst:        
+    for img in img_lst:
         print("\nProcessing the image:", img)
-        
+
         source = cv.imread(os.path.join(input_dir, img), 1)
 
-        print("* Detection and removal of background.")
-        cleaned = background_removal(source, background_color, B_values, C_values)
-        
         print("* Re-orientation of the garment.")
-        reoriented = garment_reorientation(source, cleaned, size_for_thread_detection, max_degree, background_color)
-        
+        reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
+
+        print("* Detection and removal of background.")
+        cleaned = background_removal(reoriented, background_color, B_values, C_values)
+
         print("* Centering and zooming of the garment.")
-        cropped = crop_garment(reoriented)
+        cropped = crop_garment(cleaned)
 
         print("* Resizing the final image.")
         resized = image_resize(cropped, margin, file_resolution, background_color)
@@ -356,7 +377,7 @@ if __name__ == '__main__':
 
             cv.imshow("Input", source)
             cv.imshow("Output", resized)
-            
+
             key = cv.waitKey(30)
             if key == 27:
                 break
