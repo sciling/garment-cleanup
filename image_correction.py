@@ -348,6 +348,9 @@ if __name__ == '__main__':
         print("The input does not exist:", input)
         sys.exit(0)
 
+    if not os.path.exists(output):
+        os.makedirs(output)
+
     for img in img_lst:
         print("\nProcessing the image:", img)
 
