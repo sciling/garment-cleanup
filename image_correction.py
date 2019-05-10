@@ -346,7 +346,8 @@ if __name__ == '__main__':
 
         if os.path.isfile(input):
             img_lst.append(input)
-            output_path = os.path.join(output, input.replace('../',''))
+            input_path = os.path.split(input)[0]
+            output_path = os.path.join(output, input_path.replace('../',''))
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
