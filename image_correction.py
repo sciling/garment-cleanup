@@ -365,41 +365,43 @@ if __name__ == '__main__':
         sys.exit(0)
 
     for img in img_lst:
-        source = cv.imread(img, 1)
-        output_filename = os.path.join(output, img.replace('../',''))
-
         print("\nProcessing the image:", img)
+        
+        try:
+            source = cv.imread(img, 1)
+            output_filename = os.path.join(output, img.replace('../',''))
 
-        print("* Re-orientation of the garment.")
-        reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
+            print("* Re-orientation of the garment.")
+            reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
 
-        print("* Detection and removal of background.")
-        cleaned = background_removal(reoriented, background_color, B_values, C_values)
+            print("* Detection and removal of background.")
+            cleaned = background_removal(reoriented, background_color, B_values, C_values)
 
-        print("* Centering and zooming of the garment.")
-        cropped = crop_garment(cleaned)
+            print("* Centering and zooming of the garment.")
+            cropped = crop_garment(cleaned)
 
-        print("* Resizing the final image.")
-        resized = image_resize(cropped, margin, file_resolution, background_color)
+            print("* Resizing the final image.")
+            resized = image_resize(cropped, margin, file_resolution, background_color)
 
-        print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
-        image_write(output_filename, resized, file_size)
+            print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
+            image_write(output_filename, resized, file_size)
 
-        print("* The processed image has been saved as:", output_filename)
+            print("* The processed image has been saved as:", output_filename)
 
-        if show:
-            height, width = source.shape[:2]
-            source = cv.resize(source, (int(0.25 * width), int(0.25 * height)), interpolation=cv.INTER_CUBIC)
+            if show:
+                height, width = source.shape[:2]
+                source = cv.resize(source, (int(0.25 * width), int(0.25 * height)), interpolation=cv.INTER_CUBIC)
 
-            height, width = resized.shape[:2]
-            resized = cv.resize(resized, (int(0.75 * width), int(0.75 * height)), interpolation=cv.INTER_CUBIC)
+                height, width = resized.shape[:2]
+                resized = cv.resize(resized, (int(0.75 * width), int(0.75 * height)), interpolation=cv.INTER_CUBIC)
 
-            cv.imshow("Input", source)
-            cv.imshow("Output", resized)
+                cv.imshow("Input", source)
+                cv.imshow("Output", resized)
 
-            key = cv.waitKey(30)
-            if key == 27:
-                break
-
+                key = cv.waitKey(30)
+                if key == 27:
+                    break
+        except cv.error as e:
+            print("* The image {} could not be processed.".format(img))
     if show:
         cv.destroyAllWindows()
