@@ -341,20 +341,33 @@ if __name__ == '__main__':
     B_values = ast.literal_eval(args.filter_block_sizes)
     C_values = ast.literal_eval(args.filter_constant)
 
-    if Path(input).exists():
-        img_lst = [os.path.basename(input)] if Path(input).is_file() else sorted(os.listdir(input))
-        input_dir = os.path.dirname(input)
+    if os.path.exists(input):
+        img_lst = []
+
+        if os.path.isfile(input):
+            img_lst.append(input)
+            output_path = os.path.join(output, input.replace('../',''))
+
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+        else:
+            for path, subdirs, files in os.walk(input):
+                output_path = os.path.join(output, path.replace('../',''))
+
+                if not os.path.exists(output_path):
+                    os.makedirs(output_path)
+
+                for name in files:
+                    img_lst.append(os.path.join(path, name))
     else:
         print("The input does not exist:", input)
         sys.exit(0)
 
-    if not os.path.exists(output):
-        os.makedirs(output)
-
     for img in img_lst:
-        print("\nProcessing the image:", img)
+        source = cv.imread(img, 1)
+        output_filename = os.path.join(output, img.replace('../',''))
 
-        source = cv.imread(os.path.join(input_dir, img), 1)
+        print("\nProcessing the image:", img)
 
         print("* Re-orientation of the garment.")
         reoriented = garment_reorientation(source, size_for_thread_detection, max_degree, background_color)
@@ -369,7 +382,9 @@ if __name__ == '__main__':
         resized = image_resize(cropped, margin, file_resolution, background_color)
 
         print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
-        image_write(os.path.join(output, str(os.path.splitext(img)[0] + ".jpg")), resized, file_size)
+        image_write(output_filename, resized, file_size)
+
+        print("* The processed image has been saved as:", output_filename)
 
         if show:
             height, width = source.shape[:2]
