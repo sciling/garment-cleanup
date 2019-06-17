@@ -57,13 +57,13 @@ Then, the resulting image after the correction process is:
 <img src="img/corrected_2.jpg"  width="384" height="576">
 
 
-Suppose a directory *img* that contains the following structure:
+Now, suppose a directory *img* that contains the following structure:
 - img/image_1.jpg
 - img/image_2.jpg
 - img/class_A/image_1.jpg
 - img/class_A/image_2.jpg
 - img/class_B/image_1.jpg
-- img/class_B/image_1.jpg
+- img/class_B/image_2.jpg
 
 The script can be used to process all the images contained in the directory *img* as follows:
 ```console
@@ -75,5 +75,5 @@ Then, the processed images are written in the *output* directory maintaining the
 - output/img/class_A/image_1.jpg
 - output/img/class_A/image_2.jpg
 - output/img/class_B/image_1.jpg
-- output/img/class_B/image_1.jpg
+- output/img/class_B/image_2.jpg
 
