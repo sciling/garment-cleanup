@@ -33,6 +33,7 @@ the second value indicates the minimum value in the range until one that are ass
 - -show: Show the input and correted output images, False by default.
 
 See the next example photograph:
+![picture](/uploads/b8899482e5d8b72f77ec0ae22a973f7b/picture.jpg)
 ![Picture](img/picture.jpg = 250x)
 
 This photograph can be processed without using a U-Net deep learning model as follows:
