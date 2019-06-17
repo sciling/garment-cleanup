@@ -33,6 +33,8 @@ the second value indicates the minimum value in the range until one that are ass
 - -show: Show the input and correted output images, False by default.
 
 See the next example photograph:
+
+
 <img src="img/picture.jpg"  width="384" height="576">
 
 
@@ -41,6 +43,8 @@ This photograph can be processed without using a U-Net deep learning model as fo
 python3 image_correction.py -i img/picture.jpg -o output/
 ```
 See the resulting image after the correction process:
+
+
 <img src="img/corrected_1.jpg"  width="384" height="576">
 
 If we have a U-Net deep learning model, we can use it for the background removal as follows:
@@ -48,5 +52,28 @@ If we have a U-Net deep learning model, we can use it for the background removal
 python3 image_correction.py -i img/picture.jpg -o output/ -n models/unet_micolet.hdf5
 ```
 Then, the resulting image after the correction process is:
+
+
 <img src="img/corrected_2.jpg"  width="384" height="576">
+
+
+Suppose a directory *img* that contains the following structure:
+- img/image_1.jpg
+- img/image_2.jpg
+- img/class_A/image_1.jpg
+- img/class_A/image_2.jpg
+- img/class_B/image_1.jpg
+- img/class_B/image_1.jpg
+
+The script can be used to process all the images contained in the directory *img* as follows:
+```console
+python3 image_correction.py -i img/ -o output/
+```
+Then, the processed images are written in the *output* directory maintaining the original directory structure:
+- output/img/image_1.jpg
+- output/img/image_2.jpg
+- output/img/class_A/image_1.jpg
+- output/img/class_A/image_2.jpg
+- output/img/class_B/image_1.jpg
+- output/img/class_B/image_1.jpg
 
