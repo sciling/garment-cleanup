@@ -33,7 +33,7 @@ the second value indicates the minimum value in the range until one that are ass
 - -show: Show the input and correted output images, False by default.
 
 See the next example photograph:
-![picture](/uploads/b8899482e5d8b72f77ec0ae22a973f7b/picture.jpg)
+![picture](/uploads/b8899482e5d8b72f77ec0ae22a973f7b/picture.jpg =250x)
 ![Picture](img/picture.jpg = 250x)
 
 This photograph can be processed without using a U-Net deep learning model as follows:
@@ -41,6 +41,7 @@ This photograph can be processed without using a U-Net deep learning model as fo
 python3 image_correction.py -i img/picture.jpg -o output/
 ```
 See the resulting image after the correction process:
+![Result without Deep Learning model](/uploads/c24036d008f29389667c01032cee6858/corrected_1.jpg =250x )
 ![Result without Deep Learning model](img/corrected_1 = 250x)
 
 
@@ -49,5 +50,6 @@ If we have a U-Net deep learning model, we can use it for the background removal
 python3 image_correction.py -i img/picture.jpg -o output/ -n models/unet_micolet.hdf5
 ```
 Then, the resulting image after the correction process is:
+![Result with Deep Learning model](/uploads/bb998a19b15299aaa3c058e7c6698ab4/corrected_2.jpg =250x)
 ![Result with Deep Learning model](img/corrected_2 = 250x)
 
