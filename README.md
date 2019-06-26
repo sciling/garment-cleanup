@@ -30,6 +30,7 @@ The parameters that can be modified are:
 - -nm: The margin added to the unet input image in pixels, (100, 100, 100, 100) by default
 - -nmt: The thresholds to apply the predicted unet mask, the fist value indicates the maximum value in the range from zero that are assigned to the background, 
 the second value indicates the minimum value in the range until one that are assigned to the garment, (0, 1) by default.
+- -ic: Allows to deactivate the illumination correction, True by default.
 - -show: Show the input and correted output images, False by default.
 
 See the next example photograph:

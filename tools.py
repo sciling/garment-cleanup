@@ -204,7 +204,7 @@ def crop_garment(img, img2=None, margin=(0, 0, 0, 0)):
         return new_img
 
 
-def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_values=(6, 11)):
+def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_values=(6, 11), correct_illu=True):
     """
     Detects the garment in the image and sets the color of the background.
     """
@@ -266,8 +266,9 @@ def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_valu
     mask = np.zeros(img.shape, img.dtype)
     cv.fillPoly(mask, cntsb, (255,)*img.shape[2], )
 
-    # Apply a ilumination correction
-    img = illumination_correction(img)
+    if correct_illu is True: 
+        # Apply a ilumination correction
+        img = illumination_correction(img)
 
     # Apply the mask to extract the garment
     fg_masked = cv.bitwise_and(img, mask)
@@ -282,7 +283,7 @@ def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_valu
 
     return masked
 
-def background_removal_v2(img, background_color=[0, 0, 0]):
+def background_removal_v2(img, background_color=[0, 0, 0], correct_illu =True):
     """
     Detects the garment in the image and sets the color of the background based on Sobel edge detection algorithm.
     """
@@ -328,8 +329,9 @@ def background_removal_v2(img, background_color=[0, 0, 0]):
     blur = cv.GaussianBlur(mask2,(5,5),0)
     mask2 = cv.addWeighted(blur,1.5,mask2,-0.5,0)
 
-    # Apply a ilumination correction
-    new_img = illumination_correction(new_img)
+    if correct_illu is True: 
+        # Apply a ilumination correction
+        new_img = illumination_correction(new_img)
 
     # Apply the mask to extract the garment
     fg_masked = cv.bitwise_and(new_img, mask2)
@@ -492,7 +494,7 @@ def unet_background_removal(img, model, unet_input_resolution):
 
     return new_img.astype(np.uint8)
 
-def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0, 1)):
+def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0, 1), correct_illu=True):
     """
     Apply a background color to the RGBA input image according to the alpha channel and the defined thresholds.
     Returns a RGB image.
@@ -511,8 +513,9 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
 
     inv_mask = 1. - mask
 
-    # Apply a ilumination correction
-    image = illumination_correction(image)
+    if correct_illu is True:
+        # Apply a ilumination correction
+        image = illumination_correction(image)
     image = image / 255
 
     result = background[:,:,:3] * inv_mask + image[:,:,:3] * mask
