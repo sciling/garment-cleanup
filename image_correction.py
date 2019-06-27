@@ -29,14 +29,14 @@ if __name__ == '__main__':
     parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
     parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
     parser.add_argument('-md', '--max_degree_correction', default=5)
-    parser.add_argument('-show', '--show_images', default=False)
+    parser.add_argument('-show', '--show_images', action='store_true')
     parser.add_argument('-b', '--filter_block_sizes', default='(3, 91)')
     parser.add_argument('-c', '--filter_constant', default='(6, 11)')
     parser.add_argument('-n', '--unet_model_path', default=None)
     parser.add_argument('-nr', '--unet_resolution', default='(256, 256)')
     parser.add_argument('-nm', '--unet_margin', default='(100, 100, 100, 100)')
     parser.add_argument('-nmt', '--unet_mask_threshold', default='(0, 1)')
-    parser.add_argument('-ic', '--illumination_correction', default=True)
+    parser.add_argument('-ic', '--illumination_correction', action='store_true')
 
     args = parser.parse_args()
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     size_for_thread_detection = ast.literal_eval(args.size_for_thread_detection)
     show = args.show_images
     correct_illu = args.illumination_correction
-
+ 
     B_values = ast.literal_eval(args.filter_block_sizes)
     C_values = ast.literal_eval(args.filter_constant)
 
@@ -112,19 +112,12 @@ if __name__ == '__main__':
                 print("* Centering and zooming of the garment.")
                 image = crop_garment(cleaned)
             else:
-                print("* Initial detection and removal of background.")
-                cleaned = background_removal_v2(source, background_color, illumination_correction)
+                print("* Detection and removal of background by unet.")
+                image = unet_background_removal(source, model, unet_input_resolution)
+                image = apply_mask_background_removal(image, background_color, unet_mask_threshold, correct_illu)
 
                 print("* Re-orientation of the garment.")
-                source_reoriented, cleaned_reoriented = garment_reorientation_v2(source,
-                        cleaned, size_for_thread_detection, max_degree, background_color)
-
-                print("* Initia centering and zooming of the garment.")
-                _, reoriented_cropped = crop_garment(cleaned_reoriented, source_reoriented, unet_margin)
-
-                print("* Detection and removal of background by unet.")
-                image = unet_background_removal(reoriented_cropped, model, unet_input_resolution)
-                image = apply_mask_background_removal(image, background_color, unet_mask_threshold, correct_illu)
+                _, image = garment_reorientation_v2(source, image, size_for_thread_detection, max_degree, background_color)
 
                 print("* Final centering and zooming of the garment.")
                 image = crop_garment(image)
