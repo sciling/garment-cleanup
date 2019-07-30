@@ -21,16 +21,16 @@ import argparse
 from pathlib import Path
 import ast
 
-def find_contours(img, cnt_technique="threshold"):
+def find_contours(img, cnt_technique="sobel"):
     """
     Find the contours for img
     """
 
+    # Get the gray levels
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
     if cnt_technique is "threshold":
         #Find the contours for img by using adaptative thresholds
-        # Get the gray thresholds
-        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
         # Remove noise in the gray image
         gray = cv.fastNlMeansDenoising(gray, None, 10, 11, 21)
         threshed = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 233, 3)
@@ -40,12 +40,6 @@ def find_contours(img, cnt_technique="threshold"):
         th = cv.morphologyEx(threshed, cv.MORPH_CLOSE, kernel)
     else:
         #Find the contours for img by using the sobel technique
-        # Correct the illumination to increase the contrast
-        new_img = illumination_correction(img)
-
-        # Get the gray levels
-        gray = cv.cvtColor(new_img, cv.COLOR_BGR2GRAY)
-
         sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=5)
         sobely = cv.Sobel(gray,cv.CV_64F,0,1,ksize=5)
         abs_sobel = np.absolute(np.sqrt((np.power(sobelx, 2) + np.power(sobely, 2))))
@@ -56,7 +50,7 @@ def find_contours(img, cnt_technique="threshold"):
     # Return the contours
     return cv.findContours(th, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0], cnt_technique="threshold"):
+def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0], cnt_technique="sobel"):
     '''
     Reorientation of the garment by detecting the angle of the thread from which it hangs.
     '''
@@ -103,7 +97,7 @@ def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=
 
     return img
 
-def garment_reorientation_v2(img, img2=None, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0], cnt_technique="threshold"):
+def garment_reorientation_v2(img, img2=None, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0], cnt_technique="sobel"):
     '''
     Reorientation of the garment by detecting the angle of the thread from which it hangs.
     This method is based on Sobel edge detection algorithm. The detection is preformed on the first input image
@@ -500,8 +494,9 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
     background = background / 255
 
     mask = np.stack([image[:,:,3] / 255 for _ in range(3)], axis = 2)
-    mask[mask < threshold[0]] = 0
-    mask[mask > threshold[1]] = 1
+    mask[mask <= threshold[0]] = 0
+    mask[mask >= threshold[1]] = 1
+    mask[(mask > threshold[0]) & (mask < threshold[1])] = (mask[(mask > threshold[0]) & (mask < threshold[1])] - threshold[0]) / (threshold[1] - threshold[0])
 
     inv_mask = 1. - mask
 

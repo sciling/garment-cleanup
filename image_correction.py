@@ -66,12 +66,16 @@ if __name__ == '__main__':
         if os.path.isfile(input):
             img_lst.append(input)
             input_path = os.path.split(input)[0]
+            # Remove first / if the files are in an absolute path
+            input_path = input_path[1:] if input_path.startswith('/') else input_path
             output_path = os.path.join(output, input_path.replace('../',''))
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
         else:
             for path, subdirs, files in os.walk(input):
+                # Remove first / if the files are in an absolute path
+                path = path[1:] if path.startswith('/') else path
                 output_path = os.path.join(output, path.replace('../',''))
 
                 if not os.path.exists(output_path):
@@ -99,6 +103,8 @@ if __name__ == '__main__':
 
         try:
             source = cv.imread(img_filename, 1)
+            # Remove first / if the files are in an absolute path
+            img_filename = img_filename[1:] if img_filename.startswith('/') else img_filename
             output_filename = os.path.join(output, img_filename.replace('../',''))
 
             if model is None:
