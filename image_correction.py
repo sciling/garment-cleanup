@@ -19,30 +19,10 @@ Author: Emilio Granell <egranell@sciling.com>
 
 from tools import *
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process images.')
-    parser.add_argument('-i', '--input', required=True)
-    parser.add_argument('-o', '--output', required=True)
-    parser.add_argument('-fs', '--file_size', default=100000)
-    parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
-    parser.add_argument('-m', '--margin', default='(114, 114, 114, 114)')
-    parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
-    parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
-    parser.add_argument('-md', '--max_degree_correction', default=5)
-    parser.add_argument('-show', '--show_images', action='store_true')
-    parser.add_argument('-b', '--filter_block_sizes', default='(3, 91)')
-    parser.add_argument('-c', '--filter_constant', default='(6, 11)')
-    parser.add_argument('-n', '--unet_model_path', default=None)
-    parser.add_argument('-nr', '--unet_resolution', default='(256, 256)')
-    parser.add_argument('-nm', '--unet_margin', default='(100, 100, 100, 100)')
-    parser.add_argument('-nmt', '--unet_mask_threshold', default='(0, 1)')
-    parser.add_argument('-ic', '--illumination_correction', action='store_true')
-
-    args = parser.parse_args()
-
+def main(args):
     input = args.input
     output = args.output
-
+    output_filename = ''
     file_size = int(args.file_size)
     file_resolution = ast.literal_eval(args.file_resolution)
     margin = ast.literal_eval(args.margin)
@@ -150,3 +130,27 @@ if __name__ == '__main__':
             print("* The image {} could not be processed.".format(img_filename))
     if show:
         cv.destroyAllWindows()
+    return output_filename
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process images.')
+    parser.add_argument('-i', '--input', required=True)
+    parser.add_argument('-o', '--output', required=True)
+    parser.add_argument('-fs', '--file_size', default=100000)
+    parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
+    parser.add_argument('-m', '--margin', default='(114, 114, 114, 114)')
+    parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
+    parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
+    parser.add_argument('-md', '--max_degree_correction', default=5)
+    parser.add_argument('-show', '--show_images', action='store_true')
+    parser.add_argument('-b', '--filter_block_sizes', default='(3, 91)')
+    parser.add_argument('-c', '--filter_constant', default='(6, 11)')
+    parser.add_argument('-n', '--unet_model_path', default=None)
+    parser.add_argument('-nr', '--unet_resolution', default='(256, 256)')
+    parser.add_argument('-nm', '--unet_margin', default='(100, 100, 100, 100)')
+    parser.add_argument('-nmt', '--unet_mask_threshold', default='(0, 1)')
+    parser.add_argument('-ic', '--illumination_correction', action='store_true')
+
+    args = parser.parse_args()
+    main(args)
+    
