@@ -1,0 +1,6 @@
+opencv-python
+numpy
+flask
+keras
+h5py
+Werkzeug
