@@ -113,8 +113,14 @@ def main(args):
             print("* Resizing the final image.")
             image = image_resize(image, margin, file_resolution, background_color)
 
-            print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
-            image_write(output_filename, image, file_size)
+            # If the background color contains -1 the resulting image will be saved as a PNG with the alpha channel
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
+                image_write(output_filename, image, file_size)
+            else:
+                print("* Writting the image to a PNG file with transparency.")
+                output_filename = os.path.splitext(output_filename)[0]+'.png'
+                cv.imwrite(output_filename, image)
 
             print("* The processed image has been saved as:", output_filename)
 
@@ -155,4 +161,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
-    

@@ -63,6 +63,9 @@ def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=
 
     # Find the thread contour
     cnts, hierarchy = find_contours(portion, cnt_technique)
+    
+    # Temporal background color for transparent result
+    bc = [255, 255, 255] if -1 in background_color else background_color
 
     # If the we found a contour in the search area
     if len(cnts) > 0:
@@ -93,7 +96,7 @@ def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=
         angle = -(90 - angle) if angle > 0 else 90 + angle
         rows, cols = img.shape[:2]
         M = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
-        img = cv.warpAffine(img, M, (cols, rows), borderValue=background_color)
+        img = cv.warpAffine(img, M, (cols, rows), borderValue=bc)
 
     return img
 
@@ -113,6 +116,9 @@ def garment_reorientation_v2(img, img2=None, size_for_thread_detection=(400, 400
 
     # Find the thread contour
     cnts, hierarchy = find_contours(portion, cnt_technique)
+    
+    # Temporal background color for transparent result
+    bc = [255, 255, 255] if -1 in background_color else background_color
 
     angle = 0
     # If the we found a contour in the search area
@@ -143,9 +149,9 @@ def garment_reorientation_v2(img, img2=None, size_for_thread_detection=(400, 400
         M = cv.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
 
         if img2 is None:
-            return cv.warpAffine(img, M, (cols, rows), borderValue=background_color)
+            return cv.warpAffine(img, M, (cols, rows), borderValue=bc)
         else:
-            return cv.warpAffine(img, M, (cols, rows), borderValue=background_color), cv.warpAffine(img2, M, (cols, rows), borderValue=background_color)
+            return cv.warpAffine(img, M, (cols, rows), borderValue=bc), cv.warpAffine(img2, M, (cols, rows), borderValue=bc)
     else:
         if img2 is None:
             return img
@@ -188,7 +194,6 @@ def crop_garment(img, img2=None, margin=(0, 0, 0, 0)):
         return new_img, new_img2
     else:
         return new_img
-
 
 def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_values=(6, 11), correct_illu=False):
     """
@@ -259,14 +264,18 @@ def background_removal(img, background_color=[0, 0, 0], B_values=(3, 91), C_valu
     # Apply the mask to extract the garment
     fg_masked = cv.bitwise_and(img, mask)
 
-    # Apply the mask to colour the background
-    bg = np.full(img.shape, background_color, dtype=np.uint8)
-    mask = cv.bitwise_not(mask)
-    bg_masked = cv.bitwise_and(bg, mask)
+    if -1 not in background_color:
+      # Apply the mask to colour the background
+      bg = np.full(img.shape, background_color, dtype=np.uint8)
+      mask = cv.bitwise_not(mask)
+      bg_masked = cv.bitwise_and(bg, mask)
 
-    # Combine the extracted garment with the colored background
-    masked = cv.bitwise_or(fg_masked, bg_masked)
-
+      # Combine the extracted garment with the colored background
+      masked = cv.bitwise_or(fg_masked, bg_masked)
+    else:
+      masked = cv.cvtColor(fg_masked, cv.COLOR_RGB2RGBA)
+      masked[:, :, 3] = mask[:,:,1]
+      
     return masked
 
 def background_removal_v2(img, background_color=[0, 0, 0], correct_illu=False):
@@ -321,15 +330,19 @@ def background_removal_v2(img, background_color=[0, 0, 0], correct_illu=False):
 
     # Apply the mask to extract the garment
     fg_masked = cv.bitwise_and(new_img, mask2)
+      
+    if -1 not in background_color:
+      # Apply the mask to colour the background
+      bg = np.full(new_img.shape, background_color, dtype=np.uint8)
+      mask = cv.bitwise_not(mask2)
+      bg_masked = cv.bitwise_and(bg, mask)
 
-    # Apply the mask to colour the background
-    bg = np.full(new_img.shape, background_color, dtype=np.uint8)
-    mask = cv.bitwise_not(mask2)
-    bg_masked = cv.bitwise_and(bg, mask)
-
-    # Combine the extracted garment with the colored background
-    masked = cv.bitwise_or(fg_masked, bg_masked)
-
+      # Combine the extracted garment with the colored background
+      masked = cv.bitwise_or(fg_masked, bg_masked)
+    else:
+      masked = cv.cvtColor(fg_masked, cv.COLOR_RGB2RGBA)
+      masked[:, :, 3] = mask2[:,:,1]
+      
     return masked
 
 def image_resize(img, margin = None, file_resolution=None, background_color=[0, 0, 0], inter=cv.INTER_AREA):
@@ -487,25 +500,38 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
     """
     image = img.copy()
 
-    background_color_t = background_color.copy()
-    background_color_t.append(255)
-
-    background = np.full(image.shape, background_color_t)
-    background = background / 255
-
     mask = np.stack([image[:,:,3] / 255 for _ in range(3)], axis = 2)
     mask[mask <= threshold[0]] = 0
     mask[mask >= threshold[1]] = 1
     mask[(mask > threshold[0]) & (mask < threshold[1])] = (mask[(mask > threshold[0]) & (mask < threshold[1])] - threshold[0]) / (threshold[1] - threshold[0])
-
-    inv_mask = 1. - mask
 
     if correct_illu:
         # Apply a ilumination correction
         image = illumination_correction(image)
     image = image / 255
 
-    result = background[:,:,:3] * inv_mask + image[:,:,:3] * mask
+    if -1 not in background_color:
+      background_color_t = background_color.copy()
+      background_color_t.append(255)
 
-    return (result * 255).astype(np.uint8)
+      background = np.full(image.shape, background_color_t)
+      background = background / 255
+      
+      inv_mask = 1. - mask
 
+      result = background[:,:,:3] * inv_mask + image[:,:,:3] * mask
+
+      result = (result * 255).astype(np.uint8)
+    else:
+      background = np.full(image.shape, [255,255,255,255])
+      background = background / 255
+      
+      inv_mask = 1. - mask
+
+      result = background[:,:,:3] * inv_mask + image[:,:,:3] * mask
+      result = (result * 255).astype(np.uint8)
+      
+      result = cv.cvtColor(result, cv.COLOR_RGB2RGBA)
+      result[:,:,3] = (mask[:,:,1] * 255).astype(np.uint8)
+
+    return result
