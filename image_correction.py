@@ -163,7 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('-nm', '--unet_margin', default='(100, 100, 100, 100)')
     parser.add_argument('-nmt', '--unet_mask_threshold', default='(0, 1)')
     parser.add_argument('-ic', '--illumination_correction', action='store_true')
-    parser.add_argument('-jq', '--jpg_quality', default=90)
+    parser.add_argument('-jq', '--jpg_quality', default=80)
 
     args = parser.parse_args()
     main(args)
