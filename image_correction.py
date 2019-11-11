@@ -23,15 +23,16 @@ def main(args):
     input = args.input
     output = args.output
     output_filename = ''
-    file_size = int(args.file_size)
+    file_size = int(args.file_size) if args.file_size else None
     file_resolution = ast.literal_eval(args.file_resolution)
+    jpg_quality = int(args.jpg_quality)
     margin = ast.literal_eval(args.margin)
     background_color = ast.literal_eval(args.background_color)
     max_degree = int(args.max_degree_correction)
     size_for_thread_detection = ast.literal_eval(args.size_for_thread_detection)
     show = args.show_images
     correct_illu = args.illumination_correction
- 
+
     B_values = ast.literal_eval(args.filter_block_sizes)
     C_values = ast.literal_eval(args.filter_constant)
 
@@ -115,8 +116,12 @@ def main(args):
 
             # If the background color contains -1 the resulting image will be saved as a PNG with the alpha channel
             if len(image.shape) == 3 and image.shape[2] == 3:
-                print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
-                image_write(output_filename, image, file_size)
+                if file_size:
+                    print("* Writting the image to a JPG file with a maximum size of %s bytes." % file_size)
+                    image_write(output_filename, image, file_size=file_size)
+                else:
+                    print("* Writting the image to a JPG file with %s %% compression quality." % jpg_quality)
+                    image_write(output_filename, image, jpg_quality=jpg_quality)
             else:
                 print("* Writting the image to a PNG file with transparency.")
                 output_filename = os.path.splitext(output_filename)[0]+'.png'
@@ -144,7 +149,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process images.')
     parser.add_argument('-i', '--input', required=True)
     parser.add_argument('-o', '--output', required=True)
-    parser.add_argument('-fs', '--file_size', default=100000)
+    parser.add_argument('-fs', '--file_size')
     parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
     parser.add_argument('-m', '--margin', default='(114, 114, 114, 114)')
     parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
@@ -158,6 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('-nm', '--unet_margin', default='(100, 100, 100, 100)')
     parser.add_argument('-nmt', '--unet_mask_threshold', default='(0, 1)')
     parser.add_argument('-ic', '--illumination_correction', action='store_true')
+    parser.add_argument('-jq', '--jpg_quality', default=90)
 
     args = parser.parse_args()
     main(args)

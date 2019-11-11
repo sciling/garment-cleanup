@@ -414,7 +414,7 @@ def image_resize(img, margin = None, file_resolution=None, background_color=[0, 
     # Return the wrapped image
     return img_border
 
-def image_write(file_name, img, file_size):
+def image_write(file_name, img, file_size=None, jpg_quality=None):
     """
     Writes the image to a JPG file with a size smaller than the determined by 'file_size'.
     Size adjustment is achieved by adjusting the quality of the JPG compression.
@@ -424,11 +424,11 @@ def image_write(file_name, img, file_size):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    quality = 100
+    quality = jpg_quality if jpg_quality != None else 100
     while True:
         cv.imwrite(file_name, img, [cv.IMWRITE_JPEG_QUALITY, quality])
         statinfo = os.stat(file_name)
-        if (statinfo.st_size < file_size):
+        if not file_size or (statinfo.st_size < file_size) or jpg_quality:
             break
         quality = quality - 1
 
