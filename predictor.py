@@ -53,7 +53,7 @@ class MicoletPredictor(object):
 
         try:
             source = cv.imread(img_filename, 1)
-            output_filename = os.path.join("/tmp/output/", os.path.basename(img_filename))
+            output_filename = os.path.join("/tmp/output/", os.path.basename(img_filename) + ".jpg")
 
             # * Initial detection and removal of background.
             cleaned = tools.background_removal_v2(source, background_color)
