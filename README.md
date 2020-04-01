@@ -78,3 +78,80 @@ Then, the processed images are written in the *output* directory maintaining the
 - output/img/class_B/image_1.jpg
 - output/img/class_B/image_2.jpg
 
+
+## Instruccions to Deploy in Google AI Platform
+
+### Export the application credentials and define some variables:
+
+```console
+export GOOGLE_APPLICATION_CREDENTIALS="/credentials.json"
+
+PROJECT_ID=$(gcloud config list project --format "value(core.project)")
+BUCKET_NAME=scilings_random_test_bucket
+REGION="us-central1"
+```
+
+### Create te package with the code:
+```console
+python setup.py sdist --formats=gztar
+```
+
+### Upload the code:
+```console
+gsutil cp ./dist/micolet-0.1.tar.gz gs://$BUCKET_NAME/micolet/micolet-0.1.tar.gz
+```
+
+### Upload the model:
+```console
+gsutil cp model.h5 gs://$BUCKET_NAME/micolet/model/
+```
+
+### Create a model:
+```console
+MODEL_NAME='MicoletPredictor'
+gcloud ai-platform models create $MODEL_NAME \
+  --regions $REGION
+```
+
+### Create a version:
+```console
+VERSION_NAME='v1'
+gcloud beta ai-platform versions create $VERSION_NAME \
+  --model $MODEL_NAME \
+  --runtime-version 1.15 \
+  --python-version 3.7 \
+  --origin gs://$BUCKET_NAME/micolet/model/ \
+  --package-uris gs://$BUCKET_NAME/micolet/micolet-0.1.tar.gz \
+  --prediction-class predictor.MicoletPredictor
+```
+
+### Test locally:
+```console
+gcloud ai-platform local predict --model-dir "./model/" \
+      --json-instances sample.json 
+```
+
+### Test:
+```console
+gcloud ai-platform predict --model $MODEL_NAME --version $VERSION_NAME --json-instances sample.json
+```
+
+### Test through the python API:
+```console
+python3 test.py
+```
+
+### Delete version resource:
+```console
+gcloud ai-platform versions delete $VERSION_NAME --quiet --model $MODEL_NAME
+```
+
+### Delete model resource:
+```console
+gcloud ai-platform models delete $MODEL_NAME --quiet
+```
+
+### Delete Cloud Storage objects that were created:
+```console
+gsutil -m rm -r gs://$BUCKET_NAME/micolet
+```
