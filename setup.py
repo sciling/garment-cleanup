@@ -3,7 +3,6 @@ from setuptools import find_packages
 
 REQUIRED_PACKAGES = [
         'opencv-python==4.0.0.21',
-        'scikit-image==0.15.0',
         'requests==2.22.0'
         ]
 

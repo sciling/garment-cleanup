@@ -15,7 +15,6 @@ import numpy as np
 import cv2 as cv
 import os
 import math
-import skimage
 
 
 def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0]):
@@ -472,7 +471,7 @@ def unet_background_removal(img, model, unet_input_resolution):
     Returns the same input image with the predicted alpha channel.
     '''
 
-    import skimage.transform as trans
+    #import skimage.transform as trans
 
     source_size = img.shape[:2]
     new_img = img.copy()
@@ -480,16 +479,16 @@ def unet_background_removal(img, model, unet_input_resolution):
     new_img = new_img / 255
 
     if unet_input_resolution is not (None, None):
-        new_img = trans.resize(new_img, unet_input_resolution)
-        # new_img = cv.resize(new_img, unet_input_resolution, interpolation=cv.INTER_CUBIC)
+        #new_img = trans.resize(new_img, unet_input_resolution)
+        new_img = cv.resize(new_img, unet_input_resolution, interpolation=cv.INTER_AREA)
 
     new_img = np.reshape(new_img, (1,)+new_img.shape)
 
     alpha = model.predict(new_img)[0]
     if unet_input_resolution is not (None, None):
-        alpha = trans.resize(alpha, source_size)
-        # alpha = cv.resize(alpha, (img.shape[1], img.shape[0]), interpolation=cv.INTER_CUBIC)
-        # alpha = np.reshape(alpha, alpha.shape+(1,))
+        #alpha = trans.resize(alpha, source_size)
+        alpha = cv.resize(alpha, (img.shape[1], img.shape[0]), interpolation=cv.INTER_AREA)
+        alpha = np.reshape(alpha, alpha.shape+(1,))
 
     alpha = (255 * alpha)
     new_img = np.concatenate((img, alpha), axis=2)
@@ -527,6 +526,8 @@ def rescale_intensity(img, r1, r2):
     '''
     Return image after stretching or shrinking its intensity levels.
     '''
+    import skimage
+
     img_rescaled = skimage.exposure.rescale_intensity(
         img[:, :, :3],
         in_range=(r1, r2),
