@@ -2,8 +2,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 REQUIRED_PACKAGES = [
-        'opencv-python==4.0.0.21',
-        'requests==2.22.0'
+        'opencv-python==4.0.0.21'
         ]
 
 setup(
