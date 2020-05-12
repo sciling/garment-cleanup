@@ -122,7 +122,8 @@ gcloud beta ai-platform versions create $VERSION_NAME \
   --python-version 3.7 \
   --origin gs://$BUCKET_NAME/micolet/model/ \
   --package-uris gs://$BUCKET_NAME/micolet/micolet-0.1.tar.gz \
-  --prediction-class predictor.MicoletPredictor
+  --prediction-class predictor.MicoletPredictor \
+  --machine-type=mls1-c4-m4 
 ```
 
 ### Test locally:
