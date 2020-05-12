@@ -16,7 +16,6 @@ import cv2 as cv
 import os
 import math
 
-
 def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=5, background_color=[0, 0, 0]):
     '''
     Reorientation of the garment by detecting the angle of the thread from which it hangs.
@@ -522,13 +521,45 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
 
     return (result * 255).astype(np.uint8)
 
+def intensity_range(image, range_values='image', clip_negative=False):
+    """
+    Code ripped from skimage package to make this package smaller in size
+    """
+    if range_values == 'dtype':
+        range_values = image.dtype.type
+
+    if range_values == 'image':
+        i_min = np.min(image)
+        i_max = np.max(image)
+    elif range_values in DTYPE_RANGE:
+        i_min, i_max = DTYPE_RANGE[range_values]
+        if clip_negative:
+            i_min = 0
+    else:
+        i_min, i_max = range_values
+    return i_min, i_max
+
+
+def rescale_intensity(image, in_range='image', out_range='dtype'):
+    """
+    Code ripped from skimage package to make this package smaller in size
+    """
+    dtype = image.dtype.type
+
+    imin, imax = intensity_range(image, in_range)
+    omin, omax = intensity_range(image, out_range, clip_negative=(imin >= 0))
+
+    image = np.clip(image, imin, imax)
+
+    image = (image - imin) / float(imax - imin)
+    return np.array(image * (omax - omin) + omin, dtype=dtype)
+
 def rescale_intensity(img, r1, r2):
     '''
     Return image after stretching or shrinking its intensity levels.
     '''
-    import skimage
 
-    img_rescaled = skimage.exposure.rescale_intensity(
+    img_rescaled = rescale_intensity(
         img[:, :, :3],
         in_range=(r1, r2),
         out_range=(0, 255)
