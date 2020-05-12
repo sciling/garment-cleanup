@@ -74,7 +74,7 @@ class MicoletPredictor(object):
             image = tools.unet_background_removal(image, self._model, unet_input_resolution)
 
             # * Fixing color of the image before removing the background.
-            #image = tools.rescale_intensity(image, 25, 240)
+            image = tools.rescale_intensity(image, 25, 240)
 
             # * Apply mask to the image
             image = tools.apply_mask_background_removal(image, background_color, unet_mask_threshold)
