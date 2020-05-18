@@ -521,49 +521,16 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
 
     return (result * 255).astype(np.uint8)
 
-def intensity_range(image, range_values='image', clip_negative=False):
-    """
-    Code ripped from skimage package to make this package smaller in size
-    """
-    if range_values == 'dtype':
-        range_values = image.dtype.type
-
-    if range_values == 'image':
-        i_min = np.min(image)
-        i_max = np.max(image)
-    elif range_values in DTYPE_RANGE:
-        i_min, i_max = DTYPE_RANGE[range_values]
-        if clip_negative:
-            i_min = 0
-    else:
-        i_min, i_max = range_values
-    return i_min, i_max
-
-
-def rescale_intensity(image, in_range='image', out_range='dtype'):
-    """
-    Code ripped from skimage package to make this package smaller in size
-    """
-    dtype = image.dtype.type
-
-    imin, imax = intensity_range(image, in_range)
-    omin, omax = intensity_range(image, out_range, clip_negative=(imin >= 0))
-
-    image = np.clip(image, imin, imax)
-
-    image = (image - imin) / float(imax - imin)
-    return np.array(image * (omax - omin) + omin, dtype=dtype)
-
 def rescale_intensity(img, r1, r2):
     '''
     Return image after stretching or shrinking its intensity levels.
     '''
 
-    img_rescaled = rescale_intensity(
-        img[:, :, :3],
-        in_range=(r1, r2),
-        out_range=(0, 255)
-    )
+    # Clip the image to the specified range, renormalize ranges, and rescale.
+    # Code adapted from Skimage to reduce overhead
+    img_rescaled = np.clip(img[:, :, :3], r1, r2)
+    img_rescaled = (img_rescaled - r1) / float(r2 - r1)
+    img_rescaled = np.array(img_rescaled * 255, dtype=img.dtype.type)
     # Add one dimension (will be the alpha channel).
     img_rescaled = np.dstack((img_rescaled, np.zeros(img_rescaled.shape[:2]))).astype(np.uint8)
     # Restore alpha from original image.
