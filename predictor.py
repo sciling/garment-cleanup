@@ -92,11 +92,10 @@ class MicoletPredictor(object):
                 # * Writting the image to a JPG file with %s %% compression quality.' % jpg_quality
                 tools.image_write(output_filename, image, jpg_quality=jpg_quality)
 
-            # Load final image to be send in the response
-            image = cv.imread(output_filename, 1)
-            
-            bts = cv.imencode('.jpg', image)[1]
-            return np.array(bts).tostring().decode("latin1")
+            with open(output_filename, 'rb') as f:
+                data = f.read()
+            b64data = b64encode(data)
+            return b64data.decode('utf8')
 
         except RuntimeError as e:
             return {"error": '* The image "{}" could not be processed. {}'.format(url, e)}
