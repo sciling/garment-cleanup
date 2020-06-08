@@ -471,22 +471,29 @@ def unet_background_removal(img, model, unet_input_resolution):
     '''
 
     #import skimage.transform as trans
+    from scipy.ndimage import gaussian_filter
 
     source_size = img.shape[:2]
     new_img = img.copy()
     new_img = new_img[:, :, ::-1]
     new_img = new_img / 255
 
+    # INTER_NEAREST, INTER_LINEAR, INER_AREA, INTER_CUBIC, INTER_LANCZOS4
     if unet_input_resolution is not (None, None):
         #new_img = trans.resize(new_img, unet_input_resolution)
-        new_img = cv.resize(new_img, unet_input_resolution, interpolation=cv.INTER_AREA)
+        factors = (np.asarray(new_img.shape , dtype=float) /
+                   np.asarray(tuple(unet_input_resolution) + (new_img.shape[-1], ), dtype=float))
+        sigma = np.maximum(0, (factors-1) / 2)
+        #new_img = cv.GaussianBlur(new_img, ksize=(0,0), sigmaX=sigma[0], sigmaY=sigma[1])
+        new_img = gaussian_filter(new_img, sigma, mode='mirror', cval=0)
+        new_img = cv.resize(new_img, unet_input_resolution, interpolation=cv.INTER_CUBIC)
 
     new_img = np.reshape(new_img, (1,)+new_img.shape)
 
     alpha = model.predict(new_img)[0]
     if unet_input_resolution is not (None, None):
         #alpha = trans.resize(alpha, source_size)
-        alpha = cv.resize(alpha, (img.shape[1], img.shape[0]), interpolation=cv.INTER_AREA)
+        alpha = cv.resize(alpha, (img.shape[1], img.shape[0]), interpolation=cv.INTER_LINEAR)
         alpha = np.reshape(alpha, alpha.shape+(1,))
 
     alpha = (255 * alpha)
