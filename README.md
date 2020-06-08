@@ -137,9 +137,19 @@ gcloud ai-platform local predict --model-dir "./model/" \
 gcloud ai-platform predict --model $MODEL_NAME --version $VERSION_NAME --json-instances sample.json
 ```
 
+where sample.json may contain, for instance:
+```
+{"instances": {"url":"https://sciling.com/img/Micolet/picture2.jpg"}}
+```
+
 ### Test through the python API:
 ```console
 python3 test.py
+```
+
+### Test via the public API:
+```console
+curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" -d @sample.json https://ml.googleapis.com/v1/projects/reverberant-joy-184509/models/MicoletPredictorG/versions/v1_31:predict | jq -r .predictions | base64 -d > output.jpg
 ```
 
 ### Delete version resource:
