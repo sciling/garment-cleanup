@@ -506,27 +506,14 @@ def apply_mask_background_removal(img, background_color=[0, 0, 0], threshold=(0,
     Apply a background color to the RGBA input image according to the alpha channel and the defined thresholds.
     Returns a RGB image.
     '''
-    image = img.copy()
 
-    background_color_t = background_color.copy()
-    background_color_t.append(255)
-
-    background = np.full(image.shape, background_color_t)
-    background = background / 255
-
-    mask = np.stack([image[:, :, 3] / 255 for _ in range(3)], axis=2)
+    mask = np.stack([img[:, :, 3] / 255 for _ in range(3)], axis=2)
     mask[mask < threshold[0]] = 0
     mask[mask > threshold[1]] = 1
 
-    inv_mask = 1. - mask
+    result = (1. - mask) * background_color + img[:, :, :3] * mask
 
-    # Apply a ilumination correction
-    # image = illumination_correction(image)
-    image = image / 255
-
-    result = background[:, :, :3] * inv_mask + image[:, :, :3] * mask
-
-    return (result * 255).astype(np.uint8)
+    return (result).astype(np.uint8)
 
 def rescale_intensity(img, r1, r2):
     '''

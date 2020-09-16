@@ -6,9 +6,9 @@ REQUIRED_PACKAGES = [
         ]
 
 setup(
-    name='micolet',
-    version='0.1',
-    description='This application performs the image correction for Micolet garment images.',
+    name='backgroundremoval',
+    version='1.0',
+    description='This application performs the background removal for Micolet garment images.',
     install_requires=REQUIRED_PACKAGES,
     packages=find_packages(),
     include_package_data=True,
