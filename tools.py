@@ -519,6 +519,19 @@ def rescale_intensity(img, r1, r2):
     '''
     Return image after stretching or shrinking its intensity levels.
     '''
+    def is_black(img):
+        # Count number of pixels with all their components (RGB) <= 50
+        # (since we assume this is closed to black colour).
+        n_black_pixels = (img <= 50).all(axis=1).sum()
+
+        # If 80% or more of the pixels are black
+        # then we consider that it's a black dress.
+        return n_black_pixels/len(img) >= 0.8
+
+    # Don't rescale intensity if the image
+    # is black since it removes textures.
+    if is_black(img[img[:, :, 3] > 5][:, :3]):
+        return img
 
     # Clip the image to the specified range, renormalize ranges, and rescale.
     # Code adapted from Skimage to reduce overhead
