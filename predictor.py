@@ -84,7 +84,7 @@ class MicoletPredictor(object):
         self.file_resolution = instances["file_resolution"] if "file_resolution" \
             in instances.keys() else (900, 1170)
         self.margin = instances["margin"] if "margin" \
-            in instances.keys() else (114, 114, 114, 114)
+            in instances.keys() else (87, 87, 87, 87)
         self.background_color = instances["background_color"] if "background_color" \
             in instances.keys() else [241, 241, 241]
         self.max_degree = instances["max_degree"] if "max_degree" \
