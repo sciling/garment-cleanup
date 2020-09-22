@@ -31,7 +31,7 @@ def parse_arguments():
     parser.add_argument('-o', '--output', required=True)
     parser.add_argument('-fs', '--file_size')
     parser.add_argument('-fr', '--file_resolution', default='(900, 1170)')
-    parser.add_argument('-m', '--margin', default='(114, 114, 114, 114)')
+    parser.add_argument('-m', '--margin', default='(87, 87, 87, 87)')
     parser.add_argument('-bc', '--background_color', default='[241, 241, 241]')
     parser.add_argument('-ptd', '--size_for_thread_detection', default='(400, 400)')
     parser.add_argument('-md', '--max_degree_correction', default=5)
