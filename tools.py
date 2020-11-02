@@ -21,6 +21,10 @@ def garment_reorientation(img, size_for_thread_detection=(400, 400), max_degree=
     Reorientation of the garment by detecting the angle of the thread from which it hangs.
     '''
 
+    # Do not perform any operation if max_degree is 0, return directly
+    if max_degree == 0:
+        return img
+
     # Correct the illumination to increase the contrast
 #    new_img = illumination_correction(img)
     new_img = img
@@ -531,8 +535,10 @@ def rescale_intensity(img, r1, r2):
     # Don't rescale intensity if the image
     # is black since it removes textures.
     if is_black(img[img[:, :, 3] > 5][:, :3]):
+        print("** Black garnment detected. Color correction deactivated.")
         return img
 
+    print("* Correcting color.")
     # Clip the image to the specified range, renormalize ranges, and rescale.
     # Code adapted from Skimage to reduce overhead
     img_rescaled = np.clip(img[:, :, :3], r1, r2)

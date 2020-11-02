@@ -6,6 +6,7 @@ import cv2 as cv
 import tools
 from base64 import b64encode
 import gc
+import defaults
 
 class MicoletPredictor(object):
     def __init__(self, model):
@@ -78,25 +79,25 @@ class MicoletPredictor(object):
     def predict(self, instances, **kwargs):
 
         self.file_size = instances["file_size"] if "file_size" \
-            in instances.keys() else None
+            in instances.keys() else defaults.file_size
         self.jpg_quality = instances["jpg_quality"] if "jpg_quality" \
-            in instances.keys() else 100
+            in instances.keys() else defaults.jpg_quality
         self.file_resolution = instances["file_resolution"] if "file_resolution" \
-            in instances.keys() else (900, 1170)
+            in instances.keys() else defaults.file_resolution
         self.margin = instances["margin"] if "margin" \
-            in instances.keys() else (87, 87, 87, 87)
+            in instances.keys() else defaults.margin
         self.background_color = instances["background_color"] if "background_color" \
-            in instances.keys() else [241, 241, 241]
+            in instances.keys() else defaults.background_color
         self.max_degree = instances["max_degree"] if "max_degree" \
-            in instances.keys() else 5
+            in instances.keys() else defaults.max_degree
         self.size_for_thread_detection = instances["size_for_thread_detection"] if "size_for_thread_detection" \
-            in instances.keys() else (400, 400)
+            in instances.keys() else deafults.size_for_thread_detection
         self.unet_input_resolution = instances["unet_input_resolution"] if "unet_input_resolution" \
-            in instances.keys() else (256, 256)
+            in instances.keys() else defaults.unet_input_resolution
         self.unet_margin = instances["unet_margin"] if "unet_margin" \
-            in instances.keys() else (100, 100, 100, 100)
+            in instances.keys() else defaults.unet_margin
         self.unet_mask_threshold = instances["unet_mask_threshold"] if "unet_mask_threshold" \
-            in instances.keys() else (0, 1)
+            in instances.keys() else defaults.unet_mask_threshold
 
         try:
             if "url" in instances.keys():

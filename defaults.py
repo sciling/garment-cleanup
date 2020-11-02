@@ -1,0 +1,10 @@
+file_size = None
+jpg_quality = 100
+file_resolution = (900, 1170)
+margin = (87, 87, 87, 87)
+background_color = [241, 241, 241]
+max_degree = 0
+size_for_thread_detection = (400, 400)
+unet_input_resolution = (256, 256)
+unet_margin = (100, 100, 100, 100)
+unet_mask_threshold = (0, 1)
