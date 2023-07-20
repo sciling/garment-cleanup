@@ -91,7 +91,7 @@ class MicoletPredictor(object):
         self.max_degree = instances["max_degree"] if "max_degree" \
             in instances.keys() else defaults.max_degree
         self.size_for_thread_detection = instances["size_for_thread_detection"] if "size_for_thread_detection" \
-            in instances.keys() else deafults.size_for_thread_detection
+            in instances.keys() else defaults.size_for_thread_detection
         self.unet_input_resolution = instances["unet_input_resolution"] if "unet_input_resolution" \
             in instances.keys() else defaults.unet_input_resolution
         self.unet_margin = instances["unet_margin"] if "unet_margin" \
