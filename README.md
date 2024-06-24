@@ -1,4 +1,4 @@
-# Image processing for garment photographs of Micolet
+# Image processing for garment photographs of GarmentCleanup
 
 The image processing performs the following tasks in order to prepare the final garment images:
 
@@ -50,7 +50,7 @@ See the resulting image after the correction process:
 
 If we have a U-Net deep learning model, we can use it for the background removal as follows:
 ```console
-python3 image_correction.py -i img/picture.jpg -o output/ -n models/unet_micolet.hdf5
+python3 image_correction.py -i img/picture.jpg -o output/ -n models/unet_garment-cleanup.hdf5
 ```
 Then, the resulting image after the correction process is:
 
@@ -98,17 +98,17 @@ python setup.py sdist --formats=gztar
 
 ### Upload the code:
 ```console
-gsutil cp ./dist/micolet-0.1.tar.gz gs://$BUCKET_NAME/micolet/micolet-0.1.tar.gz
+gsutil cp ./dist/garment-cleanup-0.1.tar.gz gs://$BUCKET_NAME/garment-cleanup/garment-cleanup-0.1.tar.gz
 ```
 
 ### Upload the model:
 ```console
-gsutil cp model.h5 gs://$BUCKET_NAME/micolet/model/
+gsutil cp model.h5 gs://$BUCKET_NAME/garment-cleanup/model/
 ```
 
 ### Create a model:
 ```console
-MODEL_NAME='MicoletPredictor'
+MODEL_NAME='GarmentCleanupPredictor'
 gcloud ai-platform models create $MODEL_NAME \
   --regions $REGION
 ```
@@ -120,9 +120,9 @@ gcloud beta ai-platform versions create $VERSION_NAME \
   --model $MODEL_NAME \
   --runtime-version 1.15 \
   --python-version 3.7 \
-  --origin gs://$BUCKET_NAME/micolet/model/ \
-  --package-uris gs://$BUCKET_NAME/micolet/micolet-0.1.tar.gz \
-  --prediction-class predictor.MicoletPredictor \
+  --origin gs://$BUCKET_NAME/garment-cleanup/model/ \
+  --package-uris gs://$BUCKET_NAME/garment-cleanup/garment-cleanup-0.1.tar.gz \
+  --prediction-class predictor.GarmentCleanupPredictor \
   --machine-type=mls1-c4-m4 
 ```
 
@@ -139,7 +139,7 @@ gcloud ai-platform predict --model $MODEL_NAME --version $VERSION_NAME --json-in
 
 where sample.json may contain, for instance:
 ```
-{"instances": {"url":"https://sciling.com/img/Micolet/picture2.jpg"}}
+{"instances": {"url":"https://sciling.com/img/GarmentCleanup/picture2.jpg"}}
 ```
 
 ### Test through the python API:
@@ -149,7 +149,7 @@ python3 test.py
 
 ### Test via the public API:
 ```console
-curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" -d @sample.json https://ml.googleapis.com/v1/projects/reverberant-joy-184509/models/MicoletPredictorG/versions/v1_31:predict | jq -r .predictions | base64 -d > output.jpg
+curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" -d @sample.json https://ml.googleapis.com/v1/projects/reverberant-joy-184509/models/GarmentCleanupPredictorG/versions/v1_31:predict | jq -r .predictions | base64 -d > output.jpg
 ```
 
 ### Delete version resource:
@@ -164,5 +164,5 @@ gcloud ai-platform models delete $MODEL_NAME --quiet
 
 ### Delete Cloud Storage objects that were created:
 ```console
-gsutil -m rm -r gs://$BUCKET_NAME/micolet
+gsutil -m rm -r gs://$BUCKET_NAME/garment-cleanup
 ```

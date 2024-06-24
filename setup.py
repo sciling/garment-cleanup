@@ -9,7 +9,7 @@ REQUIRED_PACKAGES = [
 setup(
     name='backgroundremoval',
     version='1.1',
-    description='This application performs the background removal for Micolet garment images.',
+    description='This application performs the background removal for GarmentCleanup garment images.',
     install_requires=REQUIRED_PACKAGES,
     packages=find_packages(),
     include_package_data=True,

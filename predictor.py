@@ -8,7 +8,7 @@ from base64 import b64encode
 import gc
 import defaults
 
-class MicoletPredictor(object):
+class GarmentCleanupPredictor(object):
     def __init__(self, model):
         self._model = model
 

@@ -6,10 +6,10 @@ np.set_printoptions(threshold=sys.maxsize)
 
 PROJECT_ID="reverberant-joy-184509"
 BUCKET_NAME='scilings_random_test_bucket'
-MODEL_NAME='MicoletPredictor'
+MODEL_NAME='GarmentCleanupPredictor'
 VERSION_NAME='v1'
 
-arguments = {"url":'https://sciling.com/img/Micolet/picture2.jpg',
+arguments = {"url":'https://sciling.com/img/GarmentCleanup/picture2.jpg',
         "background_color": [241,241,241],
         "file_resolution": (900, 1170),
         "margin": (114, 114, 114, 114),
